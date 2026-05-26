@@ -15,7 +15,7 @@ export interface PrData {
   user: { login: string };
 }
 
-// Limite no diff enviado pro Claude pra controlar custo de tokens.
+// Limite no diff enviado pro Gemini pra controlar custo de tokens.
 // ~50KB ≈ ~12k tokens de input, deixa folga pro system prompt + max_tokens.
 const DIFF_MAX_BYTES = 50_000;
 

@@ -12,7 +12,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Next.js-14-000000?style=flat-square&logo=next.js&logoColor=white"/>
   <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Anthropic-Claude_Sonnet_4.6-D97757?style=flat-square&logo=anthropic&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Google-Gemini_2.0_Flash-4285F4?style=flat-square&logo=google&logoColor=white"/>
   <img src="https://img.shields.io/badge/Tailwind-3-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white"/>
 </p>
 
@@ -27,7 +27,7 @@ Cola a URL de um Pull Request público do GitHub. Recebe uma análise estruturad
 ## 🛠️ Stack
 
 - **Next.js 14** (App Router) + TypeScript + Tailwind CSS
-- **Anthropic SDK** (`claude-sonnet-4-6`) com prompt caching no system prompt
+- **Google Generative AI SDK** (`gemini-2.0-flash`) com system instruction
 - **GitHub REST API** pra metadata + diff + lista de arquivos
 - **In-memory cache** (1h TTL, SHA-256 da URL) pra evitar re-análise
 - **react-markdown** + **remark-gfm** pra renderizar a saída
@@ -40,7 +40,7 @@ POST /api/analyze {url}
   → parsePrUrl()         valida formato github.com/owner/repo/pull/N
   → getCached()          retorna se houver hit (1h TTL)
   → fetchPrData()        metadata + diff + arquivos em paralelo (GitHub REST)
-  → analyzePr()          monta prompt, chama Claude com cache_control no system
+  → analyzePr()          monta prompt, chama Gemini com system instruction
   → setCached()          persiste resultado
   → response             markdown + prInfo + fromCache flag
 ```
@@ -54,7 +54,7 @@ npm install
 
 # copie e preencha
 cp .env.example .env.local
-# edite .env.local com sua ANTHROPIC_API_KEY
+# edite .env.local com sua GOOGLE_API_KEY
 
 npm run dev
 ```
@@ -65,12 +65,12 @@ Acessa http://localhost:3000.
 
 | Var | Obrigatória | Descrição |
 |-----|-------------|-----------|
-| `ANTHROPIC_API_KEY` | ✅ | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
+| `GOOGLE_API_KEY` | ✅ | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — grátis, login com conta Google. |
 | `GITHUB_TOKEN` | ❌ | Sobe rate limit de 60/h pra 5000/h. Só precisa de scope `public_repo`. |
 
 ## 💰 Custo estimado
 
-Por análise: ~$0.01-$0.03 com `claude-sonnet-4-6` ($3/$15 por 1M tokens). PRs grandes (diff truncado em 50KB) ficam dentro de ~12k tokens de input + 2k de output. Prompt caching no system prompt reduz ~80% do custo em chamadas subsequentes dentro de 5min.
+Gratuito dentro do free tier do Google AI Studio com `gemini-2.0-flash` (15 RPM, 1M tokens/dia, 1500 req/dia em maio/2026). PRs grandes (diff truncado em 50KB) ficam dentro de ~12k tokens de input + 2k de output, bem abaixo do limite de 1M tokens/minuto do modelo.
 
 ## 🗺️ Roadmap
 

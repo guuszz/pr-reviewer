@@ -11,8 +11,8 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "PR Reviewer — análise de Pull Requests com IA",
   description:
-    "Cola a URL de um Pull Request público do GitHub e receba uma análise estruturada com resumo, possíveis bugs e sugestões. Powered by Claude.",
-  keywords: ["pull request", "code review", "claude", "anthropic", "github", "ai"],
+    "Cola a URL de um Pull Request público do GitHub e receba uma análise estruturada com resumo, possíveis bugs e sugestões. Powered by Gemini.",
+  keywords: ["pull request", "code review", "gemini", "google", "github", "ai"],
   openGraph: {
     title: "PR Reviewer — análise de PRs com IA",
     description: "Resumo + possíveis bugs + sugestões pra qualquer PR público do GitHub.",

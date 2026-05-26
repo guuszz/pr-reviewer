@@ -1,13 +1,14 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-export const anthropic = new Anthropic();
+const apiKey = process.env.GOOGLE_API_KEY;
+if (!apiKey && process.env.NODE_ENV === "production") {
+  console.warn("[gemini] GOOGLE_API_KEY não setado — endpoint /api/analyze vai falhar.");
+}
 
-export const MODEL = "claude-sonnet-4-6";
-export const MAX_TOKENS = 2000;
+export const MODEL_NAME = "gemini-2.0-flash";
+export const MAX_OUTPUT_TOKENS = 2000;
 
-// System prompt longo, estável, e PT-BR. Cacheável (>1024 tokens) para reduzir
-// custo em requests repetidas. NÃO interpole valores dinâmicos aqui — qualquer
-// byte que mude invalida o cache.
+// System prompt longo, estável, e PT-BR. NÃO interpole valores dinâmicos aqui.
 export const SYSTEM_PROMPT = `Você é um revisor sênior de Pull Requests do GitHub.
 Sua tarefa é analisar diffs de código e produzir uma revisão estruturada em português brasileiro.
 
@@ -58,7 +59,6 @@ Liste como bullets, 2-5 itens.
 5. **Não invente problemas.** Se o diff é pequeno e direto, sua revisão também deve ser curta. Não force achados.
 6. **Use bullets curtos.** Cada bullet em 1-3 frases. PR review não é ensaio.
 7. **Linguagem técnica em português, mas mantenha termos consagrados em inglês** (memoization, hook, prop, race condition, etc) quando apropriado.
-8. **Considere o contexto da mudança.** Um hotfix tem critérios diferentes de uma refatoração grande. Adapte o tom.
 
 # O que evitar
 
@@ -90,29 +90,33 @@ export interface PrAnalysisInput {
 }
 
 export async function analyzePr(pr: PrAnalysisInput): Promise<string> {
-  const userMessage = formatUserMessage(pr);
+  if (!apiKey) {
+    throw new Error(
+      "GOOGLE_API_KEY não configurada. Crie uma em https://aistudio.google.com/apikey e seta no Vercel.",
+    );
+  }
 
-  const response = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: MAX_TOKENS,
-    system: [
-      {
-        type: "text",
-        text: SYSTEM_PROMPT,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
-    messages: [{ role: "user", content: userMessage }],
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: MODEL_NAME,
+    systemInstruction: SYSTEM_PROMPT,
+    generationConfig: {
+      maxOutputTokens: MAX_OUTPUT_TOKENS,
+      temperature: 0.4,
+    },
   });
 
-  // ContentBlock é union discriminada — filtra blocos de texto e concatena.
-  const text = response.content
-    .filter((b) => b.type === "text")
-    .map((b) => b.text)
-    .join("\n")
-    .trim();
+  const userMessage = formatUserMessage(pr);
+  const result = await model.generateContent(userMessage);
+  const text = result.response.text();
 
-  return text;
+  if (!text || !text.trim()) {
+    throw new Error(
+      "Gemini retornou resposta vazia. Pode ter sido bloqueado por safety filters — tente outro PR.",
+    );
+  }
+
+  return text.trim();
 }
 
 function formatUserMessage(pr: PrAnalysisInput): string {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parsePrUrl, fetchPrData } from "@/lib/github";
-import { analyzePr } from "@/lib/anthropic";
+import { analyzePr } from "@/lib/gemini";
 import { getCached, setCached } from "@/lib/cache";
 
 export const runtime = "nodejs";
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     // 3. Busca dados do PR (metadata + diff + arquivos).
     const pr = await fetchPrData(parsed);
 
-    // 4. Manda pro Claude. Prompt caching cuida do system prompt automaticamente.
+    // 4. Manda pro Gemini com o system instruction configurado no modelo.
     const markdown = await analyzePr({
       title: pr.title,
       body: pr.body,

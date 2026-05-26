@@ -70,7 +70,7 @@ export default function Home() {
       <header className="mb-12">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3 py-1 font-mono text-xs text-muted">
           <Sparkles className="h-3 w-3 text-accent" aria-hidden="true" />
-          powered by Claude Sonnet 4.6
+          powered by Gemini 2.0 Flash
         </div>
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           PR Reviewer
@@ -146,7 +146,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <Loader2 className="h-4 w-4 animate-spin text-accent" aria-hidden="true" />
             <span>
-              Buscando o PR no GitHub e mandando pro Claude analisar. Pode levar
+              Buscando o PR no GitHub e mandando pro Gemini analisar. Pode levar
               10-30 segundos.
             </span>
           </div>
@@ -230,7 +230,7 @@ export default function Home() {
 
       <footer className="mt-20 border-t border-border pt-6 font-mono text-xs text-muted/80">
         <p>
-          Construído com Next.js, Anthropic SDK e Tailwind ·{" "}
+          Construído com Next.js, Google Gemini e Tailwind ·{" "}
           <a
             href="https://github.com/guuszz/pr-reviewer"
             target="_blank"
