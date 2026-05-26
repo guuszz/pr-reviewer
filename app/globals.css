@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body {
+    @apply bg-bg text-fg antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.04) 1px, transparent 0);
+    background-size: 32px 32px;
+  }
+  ::selection {
+    background-color: theme("colors.accent");
+    color: theme("colors.bg");
+  }
+  :focus { outline: none; }
+  :focus-visible {
+    @apply rounded-sm outline-none ring-2 ring-accent ring-offset-2 ring-offset-bg;
+  }
+}
+
+/* Markdown rendering */
+.markdown-body { @apply text-fg leading-relaxed; }
+.markdown-body h1, .markdown-body h2, .markdown-body h3 {
+  @apply font-semibold text-fg mt-6 mb-3;
+}
+.markdown-body h1 { @apply text-2xl; }
+.markdown-body h2 { @apply text-xl border-b border-border pb-2; }
+.markdown-body h3 { @apply text-lg text-accent; }
+.markdown-body > :first-child { @apply mt-0; }
+.markdown-body p { @apply mb-3 text-muted; }
+.markdown-body strong { @apply text-fg font-semibold; }
+.markdown-body ul, .markdown-body ol { @apply mb-3 pl-5 space-y-1; }
+.markdown-body ul { @apply list-disc; }
+.markdown-body ol { @apply list-decimal; }
+.markdown-body li { @apply text-muted; }
+.markdown-body li::marker { @apply text-accent; }
+.markdown-body code {
+  @apply font-mono text-sm bg-surface px-1.5 py-0.5 rounded border border-border text-accent;
+}
+.markdown-body pre {
+  @apply bg-surface border border-border rounded-lg p-4 my-4 overflow-x-auto;
+}
+.markdown-body pre code {
+  @apply bg-transparent border-0 p-0 text-fg;
+}
+.markdown-body blockquote {
+  @apply border-l-2 border-accent pl-4 italic text-muted my-3;
+}
+.markdown-body a {
+  @apply text-accent underline-offset-2 hover:underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
