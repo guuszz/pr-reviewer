@@ -89,15 +89,14 @@ export interface PrAnalysisInput {
   truncated: boolean;
 }
 
-export async function analyzePr(pr: PrAnalysisInput): Promise<string> {
+function buildModel() {
   if (!apiKey) {
     throw new Error(
       "GOOGLE_API_KEY não configurada. Crie uma em https://aistudio.google.com/apikey e seta no Vercel.",
     );
   }
-
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
+  return genAI.getGenerativeModel({
     model: MODEL_NAME,
     systemInstruction: SYSTEM_PROMPT,
     generationConfig: {
@@ -105,9 +104,15 @@ export async function analyzePr(pr: PrAnalysisInput): Promise<string> {
       temperature: 0.4,
     },
   });
+}
 
-  const userMessage = formatUserMessage(pr);
-  const result = await model.generateContent(userMessage);
+/**
+ * Modo non-stream — retorna o texto completo de uma vez.
+ * Use quando você precisa do resultado pra cache OU como fallback.
+ */
+export async function analyzePr(pr: PrAnalysisInput): Promise<string> {
+  const model = buildModel();
+  const result = await model.generateContent(formatUserMessage(pr));
   const text = result.response.text();
 
   if (!text || !text.trim()) {
@@ -115,8 +120,36 @@ export async function analyzePr(pr: PrAnalysisInput): Promise<string> {
       "Gemini retornou resposta vazia. Pode ter sido bloqueado por safety filters — tente outro PR.",
     );
   }
-
   return text.trim();
+}
+
+/**
+ * Modo stream — async generator que vai yieldando chunks de texto conforme
+ * o Gemini gera. Use no endpoint /api/analyze/stream pra response progressiva.
+ * Acumula o texto completo internamente pra você poder cachear no final.
+ */
+export async function* analyzePrStream(
+  pr: PrAnalysisInput,
+): AsyncGenerator<string, string, unknown> {
+  const model = buildModel();
+  const result = await model.generateContentStream(formatUserMessage(pr));
+
+  let fullText = "";
+  for await (const chunk of result.stream) {
+    const text = chunk.text();
+    if (text) {
+      fullText += text;
+      yield text;
+    }
+  }
+
+  if (!fullText.trim()) {
+    throw new Error(
+      "Gemini retornou resposta vazia. Pode ter sido bloqueado por safety filters — tente outro PR.",
+    );
+  }
+
+  return fullText.trim();
 }
 
 function formatUserMessage(pr: PrAnalysisInput): string {

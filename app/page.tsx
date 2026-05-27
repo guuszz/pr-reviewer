@@ -38,6 +38,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
 
+  // Streaming mode: ler NDJSON da response e atualizar `result.markdown` chunk a chunk.
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!url.trim() || loading) return;
@@ -47,16 +48,79 @@ export default function Home() {
     setResult(null);
 
     try {
-      const res = await fetch("/api/analyze", {
+      const res = await fetch("/api/analyze/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: url.trim() }),
       });
-      const data = await res.json();
+
       if (!res.ok) {
+        // Pode ser erro inicial antes do stream começar (ex: URL inválida)
+        const data = await res.json().catch(() => ({}));
         throw new Error(data.error || `HTTP ${res.status}`);
       }
-      setResult(data);
+
+      if (!res.body) {
+        throw new Error("Resposta sem body de streaming");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let accumulatedMarkdown = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Processa linhas completas (NDJSON: 1 evento por linha)
+        let newlineIdx = buffer.indexOf("\n");
+        while (newlineIdx !== -1) {
+          const line = buffer.slice(0, newlineIdx).trim();
+          buffer = buffer.slice(newlineIdx + 1);
+
+          if (line) {
+            try {
+              const event = JSON.parse(line) as {
+                type: "meta" | "chunk" | "done" | "error";
+                prInfo?: PrInfo;
+                truncated?: boolean;
+                fromCache?: boolean;
+                text?: string;
+                message?: string;
+              };
+
+              if (event.type === "meta" && event.prInfo) {
+                setResult({
+                  markdown: "",
+                  prInfo: event.prInfo,
+                  fromCache: event.fromCache ?? false,
+                  truncated: event.truncated,
+                });
+              } else if (event.type === "chunk" && event.text) {
+                accumulatedMarkdown += event.text;
+                // Atualização funcional pra evitar stale closure
+                setResult((prev) =>
+                  prev ? { ...prev, markdown: accumulatedMarkdown } : prev,
+                );
+              } else if (event.type === "error") {
+                throw new Error(event.message || "Erro no servidor");
+              }
+              // event.type === "done": só sai do loop quando reader done
+            } catch (parseErr) {
+              if (parseErr instanceof SyntaxError) {
+                console.error("[stream] linha inválida ignorada:", line);
+              } else {
+                throw parseErr;
+              }
+            }
+          }
+
+          newlineIdx = buffer.indexOf("\n");
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro desconhecido");
     } finally {
@@ -140,15 +204,12 @@ export default function Home() {
         )}
       </form>
 
-      {/* Loading state */}
-      {loading && (
+      {/* Loading state — só aparece antes do primeiro chunk arrivar */}
+      {loading && !result && (
         <div className="rounded-lg border border-border bg-surface/30 p-6 text-sm text-muted">
           <div className="flex items-center gap-3">
             <Loader2 className="h-4 w-4 animate-spin text-accent" aria-hidden="true" />
-            <span>
-              Buscando o PR no GitHub e mandando pro Gemini analisar. Pode levar
-              10-30 segundos.
-            </span>
+            <span>Buscando o PR no GitHub e iniciando análise...</span>
           </div>
         </div>
       )}
@@ -204,6 +265,12 @@ export default function Home() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                {loading && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-2.5 py-1 font-mono text-[10px] text-accent">
+                    <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                    streaming
+                  </span>
+                )}
                 {result.fromCache && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-border bg-bg/60 px-2 py-1 font-mono text-[10px] text-muted">
                     <Clock className="h-3 w-3" aria-hidden="true" />
