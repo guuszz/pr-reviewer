@@ -1,6 +1,12 @@
 <h1 align="center">🔍 pr-reviewer</h1>
 
 <p align="center">
+  <a href="https://pr-reviewer-lemon.vercel.app">
+    <img src="screenshot.png" alt="Tela inicial do pr-reviewer mostrando input pra URL de PR e badge powered by Gemini 2.5 Flash" width="100%"/>
+  </a>
+</p>
+
+<p align="center">
   <b>Code review automático com IA pra Pull Requests do GitHub.</b><br/>
   <sub>Cole uma URL · receba análise estruturada em PT-BR em ~20s · compartilhe via link estável.</sub>
 </p>
