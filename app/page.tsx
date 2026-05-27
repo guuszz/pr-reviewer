@@ -11,6 +11,8 @@ import {
   Clock,
   ExternalLink,
   ScanSearch,
+  Link2,
+  Check,
 } from "lucide-react";
 
 interface PrInfo {
@@ -25,6 +27,7 @@ interface AnalyzeResponse {
   prInfo: PrInfo;
   fromCache: boolean;
   truncated?: boolean;
+  shareId?: string | null;
 }
 
 const EXAMPLES = [
@@ -37,6 +40,19 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopyShareLink() {
+    if (!result?.shareId) return;
+    const shareUrl = `${window.location.origin}/r/${result.shareId}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("[clipboard] erro:", err);
+    }
+  }
 
   // Streaming mode: ler NDJSON da response e atualizar `result.markdown` chunk a chunk.
   async function handleSubmit(e: FormEvent) {
@@ -90,6 +106,7 @@ export default function Home() {
                 fromCache?: boolean;
                 text?: string;
                 message?: string;
+                shareId?: string | null;
               };
 
               if (event.type === "meta" && event.prInfo) {
@@ -98,6 +115,7 @@ export default function Home() {
                   prInfo: event.prInfo,
                   fromCache: event.fromCache ?? false,
                   truncated: event.truncated,
+                  shareId: event.shareId ?? null,
                 });
               } else if (event.type === "chunk" && event.text) {
                 accumulatedMarkdown += event.text;
@@ -281,6 +299,26 @@ export default function Home() {
                   <span className="inline-flex items-center gap-1 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2 py-1 font-mono text-[10px] text-yellow-300">
                     diff truncado
                   </span>
+                )}
+                {result.shareId && !loading && (
+                  <button
+                    type="button"
+                    onClick={handleCopyShareLink}
+                    aria-label="Copiar link compartilhável da revisão"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg/60 px-2.5 py-1 font-mono text-[10px] text-muted transition-all hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-3 w-3 text-accent" aria-hidden="true" />
+                        <span className="text-accent">copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Link2 className="h-3 w-3" aria-hidden="true" />
+                        <span>copiar link</span>
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
             </div>

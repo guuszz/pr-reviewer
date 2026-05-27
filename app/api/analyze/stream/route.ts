@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { parsePrUrl, fetchPrData } from "@/lib/github";
 import { analyzePrStream } from "@/lib/gemini";
 import { getCached, setCached } from "@/lib/cache";
+import { isRedisConfigured, saveSharedReview, shortIdFromUrl } from "@/lib/redis";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
               prInfo: cached.prInfo,
               fromCache: true,
               truncated: false,
+              shareId: isRedisConfigured() ? shortIdFromUrl(url) : null,
             }),
           );
           controller.enqueue(event({ type: "chunk", text: cached.markdown }));
@@ -77,13 +79,18 @@ export async function POST(req: NextRequest) {
           state: pr.state,
         };
 
-        // Manda meta antes do conteúdo — frontend pode renderizar header
+        // Manda meta antes do conteúdo — frontend pode renderizar header.
+        // shareId é o ID estável (hash da URL) — frontend já pode mostrar
+        // o link de share antes mesmo do conteúdo terminar de streaming
+        const shareId = isRedisConfigured() ? shortIdFromUrl(url) : null;
+
         controller.enqueue(
           event({
             type: "meta",
             prInfo,
             fromCache: false,
             truncated: pr.truncated,
+            shareId,
           }),
         );
 
@@ -102,9 +109,23 @@ export async function POST(req: NextRequest) {
           controller.enqueue(event({ type: "chunk", text: chunk }));
         }
 
-        // 4. Salva no cache pra próximas requests
+        // 4. Salva no cache in-memory pra próximas requests deste deploy
         if (fullText.trim()) {
           setCached(url, { markdown: fullText.trim(), prInfo });
+
+          // 5. Persistente em Redis pra share URLs (best-effort — não bloqueia)
+          if (isRedisConfigured()) {
+            try {
+              await saveSharedReview(url, {
+                markdown: fullText.trim(),
+                prInfo,
+                truncated: pr.truncated,
+              });
+            } catch (e) {
+              console.error("[share] erro ao salvar no Redis:", e);
+              // Não propaga — share é nice-to-have
+            }
+          }
         }
 
         controller.enqueue(event({ type: "done" }));
