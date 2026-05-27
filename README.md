@@ -14,6 +14,8 @@
   <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white"/>
   <img src="https://img.shields.io/badge/Google-Gemini_1.5_Flash-4285F4?style=flat-square&logo=google&logoColor=white"/>
   <img src="https://img.shields.io/badge/Tailwind-3-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white"/>
+  <a href="https://pr-reviewer-lemon.vercel.app"><img src="https://img.shields.io/github/deployments/guuszz/pr-reviewer/production?label=vercel&logo=vercel&style=flat-square" alt="Vercel deploy"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/guuszz/pr-reviewer?style=flat-square" alt="MIT License"/></a>
 </p>
 
 ---
