@@ -152,7 +152,7 @@ export default function Home() {
       <header className="mb-12">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3 py-1 font-mono text-xs text-muted">
           <Sparkles className="h-3 w-3 text-accent" aria-hidden="true" />
-          powered by Gemini 1.5 Flash
+          powered by Gemini 2.5 Flash
         </div>
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           PR Reviewer

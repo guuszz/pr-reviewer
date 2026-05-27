@@ -12,7 +12,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Next.js-14-000000?style=flat-square&logo=next.js&logoColor=white"/>
   <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Google-Gemini_1.5_Flash-4285F4?style=flat-square&logo=google&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Google-Gemini_2.5_Flash-4285F4?style=flat-square&logo=google&logoColor=white"/>
   <img src="https://img.shields.io/badge/Tailwind-3-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white"/>
   <a href="https://pr-reviewer-lemon.vercel.app"><img src="https://img.shields.io/github/deployments/guuszz/pr-reviewer/production?label=vercel&logo=vercel&style=flat-square" alt="Vercel deploy"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/guuszz/pr-reviewer?style=flat-square" alt="MIT License"/></a>
@@ -29,7 +29,7 @@ Cola a URL de um Pull Request público do GitHub. Recebe uma análise estruturad
 ## 🛠️ Stack
 
 - **Next.js 14** (App Router) + TypeScript + Tailwind CSS
-- **Google Generative AI SDK** (`gemini-1.5-flash`) com system instruction
+- **Google Generative AI SDK** (`gemini-2.5-flash`) com system instruction
 - **GitHub REST API** pra metadata + diff + lista de arquivos
 - **In-memory cache** (1h TTL, SHA-256 da URL) pra evitar re-análise
 - **react-markdown** + **remark-gfm** pra renderizar a saída
@@ -72,7 +72,7 @@ Acessa http://localhost:3000.
 
 ## 💰 Custo estimado
 
-Gratuito dentro do free tier do Google AI Studio com `gemini-1.5-flash` (15 RPM, 1M tokens/dia, 1500 req/dia em maio/2026). PRs grandes (diff truncado em 50KB) ficam dentro de ~12k tokens de input + 2k de output, bem abaixo do limite de 1M tokens/minuto do modelo.
+Gratuito dentro do free tier do Google AI Studio com `gemini-2.5-flash` (15 RPM, 1M tokens/dia, 1500 req/dia em maio/2026). PRs grandes (diff truncado em 50KB) ficam dentro de ~12k tokens de input + 2k de output, bem abaixo do limite de 1M tokens/minuto do modelo.
 
 ## 🗺️ Roadmap
 

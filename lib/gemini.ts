@@ -5,7 +5,7 @@ if (!apiKey && process.env.NODE_ENV === "production") {
   console.warn("[gemini] GOOGLE_API_KEY não setado — endpoint /api/analyze vai falhar.");
 }
 
-export const MODEL_NAME = "gemini-1.5-flash";
+export const MODEL_NAME = "gemini-2.5-flash";
 export const MAX_OUTPUT_TOKENS = 2000;
 
 // System prompt longo, estável, e PT-BR. NÃO interpole valores dinâmicos aqui.
