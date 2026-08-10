@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { parsePrUrl, fetchPrData } from "@/lib/github";
 import { analyzePr } from "@/lib/gemini";
 import { getCached, setCached } from "@/lib/cache";
+import { scanSecurityDiff, summarizeSecurity } from "@/lib/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,6 +35,8 @@ export async function POST(req: NextRequest) {
 
     // 3. Busca dados do PR (metadata + diff + arquivos).
     const pr = await fetchPrData(parsed);
+    const securityFindings = scanSecurityDiff(pr.diff);
+    const securitySummary = summarizeSecurity(securityFindings);
 
     // 4. Manda pro Gemini com o system instruction configurado no modelo.
     const markdown = await analyzePr({
@@ -42,6 +45,7 @@ export async function POST(req: NextRequest) {
       diff: pr.diff,
       files: pr.files,
       truncated: pr.truncated,
+      securityFindings,
     });
 
     const prInfo = {
@@ -52,13 +56,15 @@ export async function POST(req: NextRequest) {
     };
 
     // 5. Salva no cache (1h).
-    setCached(url, { markdown, prInfo });
+    setCached(url, { markdown, prInfo, securityFindings, securitySummary });
 
     return NextResponse.json({
       markdown,
       prInfo,
       fromCache: false,
       truncated: pr.truncated,
+      securityFindings,
+      securitySummary,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro desconhecido";

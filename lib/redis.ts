@@ -1,5 +1,6 @@
 import { Redis } from "@upstash/redis";
 import crypto from "node:crypto";
+import type { SecurityFinding, SecuritySummary } from "./security";
 
 // ─── Cliente Redis ───────────────────────────────────────────────────
 // Auto-detecta as env vars KV_REST_API_URL/KV_REST_API_TOKEN (do Vercel KV)
@@ -58,6 +59,8 @@ function normalizeUrl(url: string): string {
 // ─── Shape do que guardamos ──────────────────────────────────────────
 export interface SharedReview {
   markdown: string;
+  securityFindings?: SecurityFinding[];
+  securitySummary?: SecuritySummary;
   prInfo: {
     title: string;
     url: string;

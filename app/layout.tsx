@@ -9,13 +9,13 @@ const SITE_URL = "https://pr-reviewer-guuszz.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "PR Reviewer — análise de Pull Requests com IA",
+  title: "Security PR Reviewer ? an?lise de seguran?a em Pull Requests",
   description:
-    "Cola a URL de um Pull Request público do GitHub e receba uma análise estruturada com resumo, possíveis bugs e sugestões. Powered by Gemini.",
-  keywords: ["pull request", "code review", "gemini", "google", "github", "ai"],
+    "Analise Pull Requests com regras determin?sticas, classifica??o CWE/OWASP e revis?o contextual assistida por IA.",
+  keywords: ["pull request", "application security", "code review", "owasp", "cwe", "github", "ai"],
   openGraph: {
-    title: "PR Reviewer — análise de PRs com IA",
-    description: "Resumo + possíveis bugs + sugestões pra qualquer PR público do GitHub.",
+    title: "Security PR Reviewer ? AppSec para Pull Requests",
+    description: "Security findings determin?sticos e revis?o contextual para Pull Requests p?blicos.",
     type: "website",
     locale: "pt_BR",
   },
