@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import type { SecurityFinding } from "./security";
 
 const apiKey = process.env.GOOGLE_API_KEY;
 if (!apiKey && process.env.NODE_ENV === "production") {
@@ -87,6 +88,7 @@ export interface PrAnalysisInput {
   diff: string;
   files: Array<{ filename: string; additions: number; deletions: number }>;
   truncated: boolean;
+  securityFindings?: SecurityFinding[];
 }
 
 function buildModel() {
@@ -161,9 +163,15 @@ function formatUserMessage(pr: PrAnalysisInput): string {
     ? `## Descrição do autor\n\n${pr.body}\n\n`
     : "";
 
+  const securitySection = pr.securityFindings?.length
+    ? `## Achados determinísticos de segurança\n\nOs itens abaixo foram detectados por regras locais. Valide o contexto, priorize riscos reais e não invente achados adicionais sem evidência no diff.\n\n${pr.securityFindings
+      .map((finding) => `- **${finding.severity.toUpperCase()} ${finding.ruleId}** — \`${finding.file}:${finding.line}\` — ${finding.title} (${finding.cwe}; ${finding.owasp})`)
+      .join("\n")}\n\n`
+    : "## Achados determinísticos de segurança\n\nNenhuma regra local foi acionada. Ainda revise lógica de autorização, validação e design quando houver evidência no diff.\n\n";
+
   return `# Pull Request: ${pr.title}
 
-${bodySection}## Arquivos modificados (${pr.files.length})
+${bodySection}${securitySection}## Arquivos modificados (${pr.files.length})
 
 ${filesList}
 

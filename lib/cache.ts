@@ -1,7 +1,10 @@
 import { createHash } from "crypto";
+import type { SecurityFinding, SecuritySummary } from "./security";
 
 export interface CachedAnalysis {
   markdown: string;
+  securityFindings?: SecurityFinding[];
+  securitySummary?: SecuritySummary;
   prInfo: {
     title: string;
     url: string;
@@ -37,7 +40,12 @@ export function getCached(url: string): CachedAnalysis | null {
     return null;
   }
 
-  return { markdown: entry.markdown, prInfo: entry.prInfo };
+  return {
+    markdown: entry.markdown,
+    prInfo: entry.prInfo,
+    securityFindings: entry.securityFindings,
+    securitySummary: entry.securitySummary,
+  };
 }
 
 export function setCached(url: string, value: CachedAnalysis): void {

@@ -22,12 +22,35 @@ interface PrInfo {
   state: string;
 }
 
+interface SecurityFinding {
+  ruleId: string;
+  severity: "critical" | "high" | "medium" | "low";
+  title: string;
+  file: string;
+  line: number;
+  evidence: string;
+  description: string;
+  remediation: string;
+  cwe: string;
+  owasp: string;
+}
+
+interface SecuritySummary {
+  total: number;
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+}
+
 interface AnalyzeResponse {
   markdown: string;
   prInfo: PrInfo;
   fromCache: boolean;
   truncated?: boolean;
   shareId?: string | null;
+  securityFindings: SecurityFinding[];
+  securitySummary: SecuritySummary;
 }
 
 const EXAMPLES = [
@@ -107,6 +130,8 @@ export default function Home() {
                 text?: string;
                 message?: string;
                 shareId?: string | null;
+                securityFindings?: SecurityFinding[];
+                securitySummary?: SecuritySummary;
               };
 
               if (event.type === "meta" && event.prInfo) {
@@ -116,6 +141,14 @@ export default function Home() {
                   fromCache: event.fromCache ?? false,
                   truncated: event.truncated,
                   shareId: event.shareId ?? null,
+                  securityFindings: event.securityFindings ?? [],
+                  securitySummary: event.securitySummary ?? {
+                    total: 0,
+                    critical: 0,
+                    high: 0,
+                    medium: 0,
+                    low: 0,
+                  },
                 });
               } else if (event.type === "chunk" && event.text) {
                 accumulatedMarkdown += event.text;
@@ -152,15 +185,14 @@ export default function Home() {
       <header className="mb-12">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3 py-1 font-mono text-xs text-muted">
           <Sparkles className="h-3 w-3 text-accent" aria-hidden="true" />
-          powered by Gemini 2.5 Flash
+          deterministic security rules + Gemini
         </div>
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
-          PR Reviewer
+          Security PR Reviewer
         </h1>
         <p className="mt-4 max-w-prose text-lg text-muted">
-          Cole a URL de um Pull Request público do GitHub e receba uma análise
-          estruturada: resumo, complexidade, possíveis bugs, sugestões de melhoria
-          e pontos positivos.
+          Analise Pull Requests p?blicos com regras determin?sticas de seguran?a,
+          classifica??o CWE/OWASP e revis?o contextual assistida por IA.
         </p>
       </header>
 
@@ -323,6 +355,41 @@ export default function Home() {
               </div>
             </div>
           </div>
+
+          <section className="rounded-xl border border-border bg-surface/40 p-6 sm:p-8">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-mono text-xs uppercase tracking-widest text-accent">
+                  security gate
+                </p>
+                <h2 className="mt-1 text-xl font-semibold">Achados determinísticos</h2>
+              </div>
+              <div className="flex gap-2 font-mono text-xs">
+                <span className="rounded-full border border-red-500/40 px-3 py-1 text-red-300">C {result.securitySummary.critical}</span>
+                <span className="rounded-full border border-orange-500/40 px-3 py-1 text-orange-300">H {result.securitySummary.high}</span>
+                <span className="rounded-full border border-yellow-500/40 px-3 py-1 text-yellow-300">M {result.securitySummary.medium}</span>
+              </div>
+            </div>
+            {result.securityFindings.length === 0 ? (
+              <p className="mt-5 text-sm text-muted">Nenhuma regra local foi acionada nas linhas adicionadas deste diff.</p>
+            ) : (
+              <div className="mt-5 space-y-3">
+                {result.securityFindings.map((finding) => (
+                  <div key={`${finding.ruleId}:${finding.file}:${finding.line}`} className="rounded-lg border border-border bg-bg/40 p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-xs font-semibold uppercase text-accent">{finding.severity} · {finding.ruleId}</span>
+                      <code className="text-xs text-muted">{finding.file}:{finding.line}</code>
+                    </div>
+                    <h3 className="mt-2 font-medium">{finding.title}</h3>
+                    <p className="mt-1 text-sm text-muted">{finding.description}</p>
+                    <div className="mt-3 flex flex-wrap gap-2 font-mono text-xs text-muted">
+                      <span>{finding.cwe}</span><span>·</span><span>{finding.owasp}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
 
           {/* Markdown */}
           <div className="markdown-body rounded-xl border border-border bg-surface/40 p-6 sm:p-8">

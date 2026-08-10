@@ -3,6 +3,7 @@ import { parsePrUrl, fetchPrData } from "@/lib/github";
 import { analyzePrStream } from "@/lib/gemini";
 import { getCached, setCached } from "@/lib/cache";
 import { isRedisConfigured, saveSharedReview, shortIdFromUrl } from "@/lib/redis";
+import { scanSecurityDiff, summarizeSecurity } from "@/lib/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,6 +62,10 @@ export async function POST(req: NextRequest) {
               fromCache: true,
               truncated: false,
               shareId: isRedisConfigured() ? shortIdFromUrl(url) : null,
+              securityFindings: cached.securityFindings ?? [],
+              securitySummary: cached.securitySummary ?? {
+                total: 0, critical: 0, high: 0, medium: 0, low: 0,
+              },
             }),
           );
           controller.enqueue(event({ type: "chunk", text: cached.markdown }));
@@ -71,6 +76,8 @@ export async function POST(req: NextRequest) {
 
         // 2. Busca dados do PR
         const pr = await fetchPrData(parsed);
+        const securityFindings = scanSecurityDiff(pr.diff);
+        const securitySummary = summarizeSecurity(securityFindings);
 
         const prInfo = {
           title: pr.title,
@@ -91,6 +98,8 @@ export async function POST(req: NextRequest) {
             fromCache: false,
             truncated: pr.truncated,
             shareId,
+            securityFindings,
+            securitySummary,
           }),
         );
 
@@ -101,6 +110,7 @@ export async function POST(req: NextRequest) {
           diff: pr.diff,
           files: pr.files,
           truncated: pr.truncated,
+          securityFindings,
         });
 
         let fullText = "";
@@ -111,7 +121,9 @@ export async function POST(req: NextRequest) {
 
         // 4. Salva no cache in-memory pra próximas requests deste deploy
         if (fullText.trim()) {
-          setCached(url, { markdown: fullText.trim(), prInfo });
+          setCached(url, {
+            markdown: fullText.trim(), prInfo, securityFindings, securitySummary,
+          });
 
           // 5. Persistente em Redis pra share URLs (best-effort — não bloqueia)
           if (isRedisConfigured()) {
@@ -120,6 +132,8 @@ export async function POST(req: NextRequest) {
                 markdown: fullText.trim(),
                 prInfo,
                 truncated: pr.truncated,
+                securityFindings,
+                securitySummary,
               });
             } catch (e) {
               console.error("[share] erro ao salvar no Redis:", e);
