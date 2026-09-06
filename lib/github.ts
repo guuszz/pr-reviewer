@@ -16,8 +16,9 @@ export interface PrData {
 }
 
 // Limite no diff enviado pro Gemini pra controlar custo de tokens.
-// ~50KB ≈ ~12k tokens de input, deixa folga pro system prompt + max_tokens.
-const DIFF_MAX_BYTES = 50_000;
+// Limite em unidades UTF-16, não em bytes ou tokens. O scanner recebe o diff completo aceito.
+export const MODEL_DIFF_MAX_CHARS = 50_000;
+export const RESPONSE_MAX_BYTES = 2_000_000;
 
 const URL_RE =
   /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:[/?#].*)?$/i;
@@ -45,17 +46,11 @@ export async function fetchPrData(parsed: ParsedPrUrl): Promise<PrData> {
     "X-GitHub-Api-Version": "2022-11-28",
     "User-Agent": "pr-reviewer-app",
   };
-  if (process.env.GITHUB_TOKEN) {
-    headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-  }
 
-  const [prResp, diffResp, filesResp] = await Promise.all([
-    fetch(baseUrl, { headers }),
-    fetch(baseUrl, {
-      headers: { ...headers, Accept: "application/vnd.github.diff" },
-    }),
-    fetch(`${baseUrl}/files?per_page=100`, { headers }),
-  ]);
+
+  // Anonymous requests deliberately exclude tokens with private-repository access.
+  const options = { headers, cache: "no-store" as const, redirect: "error" as const, signal: AbortSignal.timeout(15_000) };
+  const prResp = await fetch(baseUrl, options);
 
   if (prResp.status === 404) {
     throw new Error(
@@ -63,15 +58,19 @@ export async function fetchPrData(parsed: ParsedPrUrl): Promise<PrData> {
     );
   }
   if (prResp.status === 403) {
-    const remaining = prResp.headers.get("x-ratelimit-remaining");
-    const hint = remaining === "0"
-      ? " Configure GITHUB_TOKEN no Vercel pra aumentar o limite de 60/h pra 5000/h."
-      : "";
-    throw new Error(`Rate limit do GitHub atingido.${hint}`);
+    throw new Error("Rate limit ou acesso negado pela API pública do GitHub.");
   }
   if (!prResp.ok) {
     throw new Error(`GitHub respondeu ${prResp.status} ao buscar metadata do PR.`);
   }
+  const meta = JSON.parse(await readBoundedText(prResp));
+  if (meta.base?.repo?.private !== false) {
+    throw new Error("A análise aceita somente repositórios explicitamente públicos.");
+  }
+  const [diffResp, filesResp] = await Promise.all([
+    fetch(baseUrl, { ...options, headers: { ...headers, Accept: "application/vnd.github.diff" } }),
+    fetch(`${baseUrl}/files?per_page=100`, options),
+  ]);
   if (!diffResp.ok) {
     throw new Error(`GitHub respondeu ${diffResp.status} ao buscar o diff.`);
   }
@@ -81,21 +80,20 @@ export async function fetchPrData(parsed: ParsedPrUrl): Promise<PrData> {
     );
   }
 
-  const meta = await prResp.json();
-  const rawDiff = await diffResp.text();
+  const rawDiff = await readBoundedText(diffResp);
   const filesJson: Array<{
     filename: string;
     additions: number;
     deletions: number;
-  }> = await filesResp.json();
+  }> = JSON.parse(await readBoundedText(filesResp));
 
-  const truncated = rawDiff.length > DIFF_MAX_BYTES;
-  const diff = truncated ? rawDiff.slice(0, DIFF_MAX_BYTES) : rawDiff;
+  const truncated = rawDiff.length > MODEL_DIFF_MAX_CHARS;
+
 
   return {
     title: meta.title,
     body: meta.body ?? "",
-    diff,
+    diff: rawDiff,
     files: filesJson.map((f) => ({
       filename: f.filename,
       additions: f.additions,
@@ -106,4 +104,25 @@ export async function fetchPrData(parsed: ParsedPrUrl): Promise<PrData> {
     state: meta.state,
     user: { login: meta.user.login },
   };
+}
+
+/** Bound decoded HTTP response bytes before buffering the full response. */
+export async function readBoundedText(response: Response): Promise<string> {
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > RESPONSE_MAX_BYTES) throw new Error("Resposta do GitHub excede o limite de 2 MB.");
+      chunks.push(value);
+    }
+    return Buffer.concat(chunks).toString("utf8");
+  } finally {
+    await reader.cancel();
+    reader.releaseLock();
+  }
 }

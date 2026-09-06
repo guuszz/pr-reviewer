@@ -80,17 +80,17 @@ export async function saveSharedReview(
   prUrl: string,
   review: Omit<SharedReview, "createdAt">,
 ): Promise<string> {
-  const id = shortIdFromUrl(prUrl);
+  const id = /^[a-f0-9]{64}$/.test(prUrl) ? prUrl : shortIdFromUrl(prUrl);
   const redis = getRedis();
   const data: SharedReview = { ...review, createdAt: Date.now() };
 
-  await redis.set(`${KEY_PREFIX}${id}`, JSON.stringify(data), { ex: TTL_SECONDS });
+  await redis.set(`${KEY_PREFIX}${id}`, JSON.stringify(data), { ex: TTL_SECONDS, nx: true });
   return id;
 }
 
 export async function getSharedReview(id: string): Promise<SharedReview | null> {
   // Validação de input — só aceita hex 10 chars
-  if (!/^[a-f0-9]{10}$/.test(id)) return null;
+  if (!/^(?:[a-f0-9]{10}|[a-f0-9]{64})$/.test(id)) return null;
 
   const redis = getRedis();
   const raw = await redis.get<string | SharedReview>(`${KEY_PREFIX}${id}`);

@@ -3,6 +3,7 @@ import type { SecurityFinding, SecuritySummary } from "./security";
 
 export interface CachedAnalysis {
   markdown: string;
+  truncated: boolean;
   securityFindings?: SecurityFinding[];
   securitySummary?: SecuritySummary;
   prInfo: {
@@ -42,6 +43,7 @@ export function getCached(url: string): CachedAnalysis | null {
 
   return {
     markdown: entry.markdown,
+    truncated: entry.truncated,
     prInfo: entry.prInfo,
     securityFindings: entry.securityFindings,
     securitySummary: entry.securitySummary,

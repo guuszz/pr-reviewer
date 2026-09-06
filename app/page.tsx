@@ -156,6 +156,8 @@ export default function Home() {
                 setResult((prev) =>
                   prev ? { ...prev, markdown: accumulatedMarkdown } : prev,
                 );
+              } else if (event.type === "done") {
+                setResult((prev) => prev ? { ...prev, shareId: event.shareId ?? null } : prev);
               } else if (event.type === "error") {
                 throw new Error(event.message || "Erro no servidor");
               }
