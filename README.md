@@ -29,16 +29,16 @@ O resultado reúne:
 
 | Regra | Exemplo de risco | Referência |
 |---|---|---|
-| `SEC001` | Credencial hardcoded | CWE-798 |
-| `SEC002` | AWS Access Key no diff | CWE-798 |
-| `SEC003` | Execução dinâmica com `eval` | CWE-95 |
-| `SEC004` | Interpolação em comando de shell | CWE-78 |
-| `SEC005` | Interpolação em consulta SQL | CWE-89 |
-| `SEC006` | Validação TLS desativada | CWE-295 |
-| `SEC007` | CORS com origem curinga | CWE-942 |
-| `SEC008` | Hash criptográfico fraco | CWE-328 |
-| `SEC009` | Token gerado com `Math.random` | CWE-330 |
-| `SEC010` | Dado sensível enviado ao log | CWE-532 |
+| `SPR-001` | Credencial hardcoded | CWE-798 |
+| `SPR-002` | AWS Access Key no diff | CWE-798 |
+| `SPR-003` | Execução dinâmica com `eval` | CWE-95 |
+| `SPR-004` | Interpolação em comando de shell | CWE-78 |
+| `SPR-005` | Interpolação em consulta SQL | CWE-89 |
+| `SPR-006` | Validação TLS desativada | CWE-295 |
+| `SPR-007` | CORS com origem curinga | CWE-942 |
+| `SPR-008` | Hash criptográfico fraco | CWE-328 |
+| `SPR-009` | Token gerado com `Math.random` | CWE-330 |
+| `SPR-010` | Dado sensível enviado ao log | CWE-532 |
 
 O scanner ignora linhas removidas, metadados do patch e valores comuns de placeholder ou variáveis de ambiente para reduzir ruído.
 
@@ -80,7 +80,7 @@ https://github.com/OWNER/REPOSITORY/pull/NUMBER
 | Variável | Obrigatória | Uso |
 |---|---:|---|
 | `GOOGLE_API_KEY` | sim | Revisão contextual com Gemini |
-| `GITHUB_TOKEN` | não | Aumenta o limite da GitHub API |
+| `GITHUB_TOKEN` | não utilizado | Ignorado: acesso anônimo somente |
 | `UPSTASH_REDIS_REST_URL` | não | Persistência de análises compartilhadas |
 | `UPSTASH_REDIS_REST_TOKEN` | não | Autenticação do Redis |
 
@@ -100,7 +100,21 @@ A pipeline executa os mesmos quatro gates em cada Pull Request. Os testes unitá
 - **Determinístico antes da IA:** achados essenciais continuam verificáveis e testáveis.
 - **Somente adições:** o reviewer não atribui ao PR uma vulnerabilidade que já foi removida.
 - **NDJSON sobre POST:** permite enviar a URL no corpo e consumir a análise incrementalmente com `fetch`.
-- **Cache e rate limit:** reduz custo e abuso sem exigir infraestrutura para desenvolvimento local.
+- **Cache por conteúdo:** SHA-256 do snapshot recebido e da versão de análise, não da URL. Cada requisição reconsulta o GitHub antes do cache.
+- **Sem rate limiter da aplicação:** o cache não é um controle de abuso. Proteja deployments públicos com autenticação, quotas e limites no gateway antes de expor chamadas ao modelo.
+
+## Limites e contrato
+
+- O scanner determinístico recebe todo o diff aceito; respostas HTTP acima de **2.000.000 bytes decodificados** são interrompidas e rejeitadas, nunca aprovadas como análise parcial.
+- Somente o contexto do modelo é cortado em **50.000 unidades UTF-16**. `truncated` descreve esse corte e é preservado no cache. Isso não é uma medida de tokens.
+- A lista contextual de arquivos contém no máximo os primeiros 100 arquivos. Não há análise de arquivos binários nem do repositório inteiro.
+- Metadata e diff vêm de requisições separadas: o hash identifica os dados recebidos, não uma leitura atomicamente vinculada a um commit Git. Mudanças durante a coleta podem produzir um snapshot transitório.
+- Repositórios privados são excluídos: nenhum token GitHub é enviado e a metadata deve declarar `private: false`.
+- JSON e NDJSON compartilham `prInfo`, `truncated`, `securityFindings`, `securitySummary`, `snapshotId` e `fromCache`. NDJSON envia o `shareId` no evento `done`, somente depois de persistir. Falha no Redis retorna `null`.
+- Novos links usam a identidade do snapshot (64 hex); links antigos de 10 hex continuam legíveis. Redis usa primeira gravação por snapshot, com expiração de 30 dias; não é arquivo permanente. Uma nova geração do modelo pode diferir da primeira versão compartilhada.
+- Conteúdo público não implica ausência de segredos: título, descrição, diff reduzido e achados seguem para o provedor do modelo. Redis armazena relatórios compartilhados quando configurado. Revise essa exposição antes do uso.
+
+Testes de integração usam adaptadores locais para GitHub, modelo e compartilhamento: não fazem chamadas pagas. Veja [engineering notes](docs/review-engineering-notes.md).
 
 ## Roadmap
 
